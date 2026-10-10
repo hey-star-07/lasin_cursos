@@ -23,6 +23,26 @@ export const generarPDFLista = async (curso) => {
   const estudiantes = curso.preinscripciones;
   const total = estudiantes.length;
 
+  const escapeHtml = (text) => {
+    if (!text) return '';
+    return String(text)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  };
+
+  const formatearFecha = (fecha) => {
+    if (!fecha) return 'Por definir';
+    const match = String(fecha).match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (match) {
+      const [, y, m, d] = match;
+      return `${d}/${m}/${y}`;
+    }
+    return new Date(fecha).toLocaleDateString('es-BO');
+  };
+
   const html = `
 <!DOCTYPE html>
 <html>
@@ -52,9 +72,10 @@ export const generarPDFLista = async (curso) => {
   .col-nota { width: 45px; text-align: center; }
   .col-firma { width: 110px; }
   .resumen { margin-top: 10px; font-size: 10pt; font-weight: bold; }
-  .firma { margin-top: 20%; text-align: center; }
-  .firma-linea { border-top: 1px solid #000; width: 250px; margin: 0 auto 5px; }
-  .firma-nombre { font-weight: bold; text-transform: uppercase; font-size: 10pt; }
+  .instructor-firma { margin-top: 60px; text-align: center; page-break-inside: avoid; }
+  .instructor-firma .linea { border-top: 1px solid #000; width: 300px; margin: 0 auto 5px auto; }
+  .instructor-firma .nombre { font-weight: bold; text-transform: uppercase; font-size: 11pt; }
+  .instructor-firma .cargo { font-size: 9pt; color: #666; }
 </style>
 </head>
 <body>
@@ -79,14 +100,18 @@ export const generarPDFLista = async (curso) => {
       <tr>
         <td class="info-label">Inicio:</td>
         <td>${formatearFecha(curso.fechaInicio)}</td>
-        <td class="info-label">Modalidad:</td>
-        <td>${escapeHtml(curso.modalidad || 'N/A')}</td>
+        <td class="info-label">Fin:</td>
+        <td>${formatearFecha(curso.fechaFin)}</td>
       </tr>
       <tr>
+        <td class="info-label">Modalidad:</td>
+        <td>${escapeHtml(curso.modalidad || 'N/A')}</td>
         <td class="info-label">Horario:</td>
         <td>${curso.horaInicio && curso.horaFin ? `${curso.horaInicio} – ${curso.horaFin}` : 'N/A'}</td>
+      </tr>
+      <tr>
         <td class="info-label">Duración:</td>
-        <td>${escapeHtml(curso.duracion || 'N/A')}</td>
+        <td colspan="3">${escapeHtml(curso.duracion || 'N/A')}</td>
       </tr>
     </table>
   </div>
@@ -118,17 +143,22 @@ export const generarPDFLista = async (curso) => {
 
   <div class="resumen">TOTAL ESTUDIANTES INSCRITOS: ${total}</div>
 
-  <div class="firma">
-    <div class="firma-linea"></div>
-    <div class="firma-nombre">Firma del Instructor</div>
-    <div>${escapeHtml(curso.instructor || '')}</div>
+  <div class="instructor-firma">
+    <div class="linea"></div>
+    <div class="nombre">${escapeHtml(curso.instructor || 'Instructor')}</div>
+    <div class="cargo">Instructor del Curso</div>
   </div>
 </body>
 </html>`;
 
   const browser = await puppeteer.launch({
     headless: 'new',
-    args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    args: [
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-dev-shm-usage',
+      '--disable-gpu',
+    ],
   });
 
   try {
@@ -138,10 +168,11 @@ export const generarPDFLista = async (curso) => {
     const pdfBuffer = await page.pdf({
       format: 'A4',
       printBackground: true,
+      preferCSSPageSize: true,
       margin: { top: '20mm', right: '15mm', bottom: '20mm', left: '15mm' },
     });
 
-    return pdfBuffer;
+    return Buffer.from(pdfBuffer);
   } finally {
     await browser.close();
   }

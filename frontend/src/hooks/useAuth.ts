@@ -12,9 +12,14 @@ export function useAuth() {
     useAuthStore();
 
   const loginWithApi = async (email: string, password: string) => {
-    const response = await authApi.login({ email, password });
-    login(response.token, response.usuario);
-    return response;
+    try {
+      const response = await authApi.login({ email, password });
+      login(response.token, response.usuario);
+      return response;
+    } catch (error) {
+      // Re-lanzar para que el componente lo maneje
+      throw error;
+    }
   };
 
   const logoutWithRedirect = (redirectTo: string = '/') => {

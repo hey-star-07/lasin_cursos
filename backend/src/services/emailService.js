@@ -87,17 +87,46 @@ export const sendAceptadoEmail = async (preinscripcion, observacion) => {
   const monto = c.costo ? `Bs. ${Number(c.costo).toFixed(2)}` : 'Consultar';
   const nombre = `${preinscripcion.nombres} ${preinscripcion.apellidoPaterno}`;
 
+  const formatearFecha = (fecha) => {
+    if (!fecha) return 'Por definir';
+    const match = String(fecha).match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (match) {
+      const [, y, m, d] = match;
+      return `${d}/${m}/${y}`;
+    }
+    return new Date(fecha).toLocaleDateString('es-BO');
+  };
+
+  // Bloque de WhatsApp (solo si el curso tiene enlace)
+  const whatsappBlock = c.enlaceWhatsapp
+    ? `
+      <div style="margin-top: 28px; padding: 24px; background: linear-gradient(135deg, rgba(37,211,102,0.15) 0%, rgba(18,140,126,0.1) 100%); border-radius: 16px; border: 2px solid rgba(37,211,102,0.4);">
+        <p style="margin: 0 0 12px 0; color: #25D366; font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em;">
+          📱 Grupo Oficial de WhatsApp
+        </p>
+        <p style="margin: 0 0 16px 0; color: #94A3B8; font-size: 14px; line-height: 1.6;">
+          Únete al grupo oficial del curso para recibir avisos, material y coordinar con tus compañeros.
+        </p>
+        <a href="${c.enlaceWhatsapp}" style="display: inline-block; padding: 14px 28px; background: linear-gradient(135deg, #25D366 0%, #128C7E 100%); color: #FFFFFF; text-decoration: none; border-radius: 12px; font-weight: 800; font-size: 14px; text-transform: uppercase; letter-spacing: 0.05em;">
+          🚀 Unirme al Grupo
+        </a>
+      </div>
+    `
+    : '';
+
   const contenido = `
     <p style="color: #94A3B8; margin: 0 0 24px 0;">Hola <strong style="color: #FFFFFF;">${nombre}</strong>,</p>
     <p style="color: #94A3B8; margin: 0 0 24px 0;">Tu inscripción fue <span style="color: #10B981; font-weight: 700;">APROBADA</span>.</p>
     <div style="background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.3); border-radius: 16px; padding: 24px; margin: 24px 0;">
       ${infoRow('Curso', c.nombre)}
       ${infoRow('Modalidad', c.modalidad || 'N/A')}
-      ${infoRow('Inicio', c.fechaInicio ? new Date(c.fechaInicio).toLocaleDateString('es-BO') : 'Por definir')}
+      ${infoRow('Inicio', formatearFecha(c.fechaInicio))}
+      ${infoRow('Fin', formatearFecha(c.fechaFin))}
       ${infoRow('Horario', horario)}
       ${infoRow('Duración', c.duracion || 'N/A')}
       ${infoRow('Inversión', monto)}
     </div>
+    ${whatsappBlock}
     ${observacion ? `
       <div style="margin-top: 24px; padding: 20px; background: rgba(99,102,241,0.1); border-radius: 16px; border-left: 4px solid #6366F1;">
         <p style="margin: 0; color: #94A3B8; font-size: 14px;"><strong style="color: #A5B4FC;">Detalle:</strong><br>${observacion}</p>

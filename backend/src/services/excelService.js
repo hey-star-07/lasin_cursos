@@ -2,6 +2,11 @@ import ExcelJS from 'exceljs';
 
 const formatearFecha = (fecha) => {
   if (!fecha) return 'Por definir';
+  const match = String(fecha).match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (match) {
+    const [, y, m, d] = match;
+    return `${d}/${m}/${y}`;
+  }
   return new Date(fecha).toLocaleDateString('es-BO');
 };
 
@@ -11,10 +16,9 @@ export const generarExcelLista = async (curso) => {
   workbook.created = new Date();
 
   const sheet = workbook.addWorksheet('Lista de Inscritos', {
-    pageSetup: { paperSize: 9, orientation: 'landscape' },
+    pageSetup: { paperSize: 9, orientation: 'portrait' },
   });
 
-  // Anchos de columna
   sheet.columns = [
     { key: 'num', width: 6 },
     { key: 'paterno', width: 18 },
@@ -27,12 +31,12 @@ export const generarExcelLista = async (curso) => {
     { key: 'firma', width: 20 },
   ];
 
-  // Encabezados institucionales
   const headerStyle = {
     font: { bold: true, size: 12, color: { argb: 'FF000000' } },
     alignment: { horizontal: 'center', vertical: 'middle' },
   };
 
+  // Encabezado institucional
   sheet.mergeCells('A1:I1');
   sheet.getCell('A1').value = 'UNIVERSIDAD MAYOR DE SAN ANDRÉS';
   sheet.getCell('A1').style = { ...headerStyle, font: { bold: true, size: 14 } };
@@ -49,30 +53,33 @@ export const generarExcelLista = async (curso) => {
   sheet.getCell('A5').value = curso.nombre.toUpperCase();
   sheet.getCell('A5').style = { ...headerStyle, font: { bold: true, size: 13 } };
 
-  // Info del curso
-  sheet.getCell('A7').value = 'Instructor:';
-  sheet.getCell('A7').font = { bold: true };
-  sheet.mergeCells('B7:D7');
-  sheet.getCell('B7').value = curso.instructor || 'Por definir';
+  // Info del curso (2 filas: datos básicos + fechas)
+  const infoRow = (row, key1, val1, key2, val2) => {
+    sheet.getCell(`A${row}`).value = key1;
+    sheet.getCell(`A${row}`).font = { bold: true };
+    sheet.mergeCells(`B${row}:D${row}`);
+    sheet.getCell(`B${row}`).value = val1;
 
-  sheet.getCell('F7').value = 'Modalidad:';
-  sheet.getCell('F7').font = { bold: true };
-  sheet.mergeCells('G7:I7');
-  sheet.getCell('G7').value = curso.modalidad || 'N/A';
+    if (key2) {
+      sheet.getCell(`F${row}`).value = key2;
+      sheet.getCell(`F${row}`).font = { bold: true };
+      sheet.mergeCells(`G${row}:I${row}`);
+      sheet.getCell(`G${row}`).value = val2;
+    }
+  };
 
-  sheet.getCell('A8').value = 'Inicio:';
-  sheet.getCell('A8').font = { bold: true };
-  sheet.mergeCells('B8:D8');
-  sheet.getCell('B8').value = formatearFecha(curso.fechaInicio);
+  infoRow(7, 'Instructor:', curso.instructor || 'Por definir', 'Modalidad:', curso.modalidad || 'N/A');
+  infoRow(8, 'Inicio:', formatearFecha(curso.fechaInicio), 'Fin:', formatearFecha(curso.fechaFin));
+  infoRow(
+    9,
+    'Horario:',
+    curso.horaInicio && curso.horaFin ? `${curso.horaInicio} – ${curso.horaFin}` : 'N/A',
+    'Duración:',
+    curso.duracion || 'N/A'
+  );
 
-  sheet.getCell('F8').value = 'Horario:';
-  sheet.getCell('F8').font = { bold: true };
-  sheet.mergeCells('G8:I8');
-  sheet.getCell('G8').value =
-    curso.horaInicio && curso.horaFin ? `${curso.horaInicio} – ${curso.horaFin}` : 'N/A';
-
-  // Fila de encabezados de tabla (fila 10)
-  const headerRow = sheet.getRow(10);
+  // Fila de encabezados de tabla (fila 11)
+  const headerRow = sheet.getRow(11);
   headerRow.values = ['N°', 'PATERNO', 'MATERNO', 'NOMBRES', 'C.I.', 'TELÉFONO', 'CORREO', 'NOTA', 'FIRMA'];
   headerRow.eachCell((cell) => {
     cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
@@ -108,15 +115,41 @@ export const generarExcelLista = async (curso) => {
         right: { style: 'thin' },
       };
     });
-    // CI y teléfono como texto para preservar ceros a la izquierda
     row.getCell(5).numFmt = '@';
     row.getCell(6).numFmt = '@';
   });
 
   // Total
-  const totalRow = sheet.addRow([]);
-  totalRow.getCell(1).value = `Total estudiantes: ${curso.preinscripciones.length}`;
+  sheet.addRow([]);
+  const totalRow = sheet.addRow([`Total estudiantes: ${curso.preinscripciones.length}`]);
   totalRow.getCell(1).font = { bold: true };
+
+  // Bloque de firma del instructor (3 filas vacías + línea + nombre)
+  sheet.addRow([]);
+  sheet.addRow([]);
+  sheet.addRow([]);
+
+  const firmaStartRow = sheet.lastRow.number + 1;
+
+  // Línea superior para firma
+  sheet.mergeCells(`C${firmaStartRow}:F${firmaStartRow}`);
+  const lineaCell = sheet.getCell(`C${firmaStartRow}`);
+  lineaCell.border = { top: { style: 'thin' } };
+  lineaCell.alignment = { horizontal: 'center' };
+
+  // Nombre del instructor
+  sheet.mergeCells(`C${firmaStartRow + 1}:F${firmaStartRow + 1}`);
+  const nombreCell = sheet.getCell(`C${firmaStartRow + 1}`);
+  nombreCell.value = (curso.instructor || 'Instructor').toUpperCase();
+  nombreCell.font = { bold: true, size: 11 };
+  nombreCell.alignment = { horizontal: 'center', vertical: 'middle' };
+
+  // Cargo
+  sheet.mergeCells(`C${firmaStartRow + 2}:F${firmaStartRow + 2}`);
+  const cargoCell = sheet.getCell(`C${firmaStartRow + 2}`);
+  cargoCell.value = 'Instructor del Curso';
+  cargoCell.font = { size: 9, color: { argb: 'FF666666' } };
+  cargoCell.alignment = { horizontal: 'center', vertical: 'middle' };
 
   return await workbook.xlsx.writeBuffer();
 };

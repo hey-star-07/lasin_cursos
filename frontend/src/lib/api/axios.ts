@@ -45,8 +45,16 @@ apiClient.interceptors.response.use(
     const message =
       error.response?.data?.message || error.message || 'Error desconocido';
 
-    // Debug en desarrollo
-    if (process.env.NODE_ENV === 'development') {
+    // ⚠️ Silenciar errores de red en login (suelen ser por cancelaciones)
+    const isLoginRequest = error.config?.url?.includes('/auth/login');
+    const isNetworkError =
+      error.code === 'ERR_NETWORK' || error.message === 'Network Error';
+
+    // Debug en desarrollo (solo si no es login con error de red)
+    if (
+      process.env.NODE_ENV === 'development' &&
+      !(isLoginRequest && isNetworkError)
+    ) {
       console.error(
         `❌ [API] Error ${status || 'network'} en ${error.config?.method?.toUpperCase()} ${error.config?.url}: ${message}`
       );
@@ -54,17 +62,13 @@ apiClient.interceptors.response.use(
 
     // Token expirado o inválido
     if (status === 401 && typeof window !== 'undefined') {
-      // Evitar loop infinito en el login
-      const isLoginRequest = error.config?.url?.includes('/auth/login');
+      const isAlreadyOnLogin = window.location.pathname.includes('/login');
 
-      if (!isLoginRequest) {
+      if (!isLoginRequest && !isAlreadyOnLogin) {
         console.warn('🚪 [API] Sesión expirada, redirigiendo a login...');
         localStorage.removeItem('token');
         localStorage.removeItem('usuario');
-
-        if (!window.location.pathname.includes('/login')) {
-          window.location.href = '/login';
-        }
+        window.location.href = '/login';
       }
     }
 

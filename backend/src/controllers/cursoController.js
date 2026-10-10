@@ -22,10 +22,30 @@ const cursoSchema = z.object({
   enlaceWhatsapp: z.string().url().optional().nullable().or(z.literal('')),
 });
 
+/**
+ * Convierte un string YYYY-MM-DD a Date sin shift de timezone.
+ * Guarda como UTC medianoche del día indicado.
+ */
+const parseFechaLocal = (fechaStr) => {
+  if (!fechaStr) return null;
+
+  // Si ya es un objeto Date, extraer solo la parte YYYY-MM-DD
+  if (fechaStr instanceof Date) {
+    fechaStr = fechaStr.toISOString().split('T')[0];
+  }
+
+  // Formato esperado: YYYY-MM-DD
+  const match = String(fechaStr).match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!match) return null;
+
+  const [, year, month, day] = match;
+  return new Date(Date.UTC(parseInt(year), parseInt(month) - 1, parseInt(day)));
+};
+
 const parseFechas = (data) => ({
   ...data,
-  fechaInicio: data.fechaInicio ? new Date(data.fechaInicio) : null,
-  fechaFin: data.fechaFin ? new Date(data.fechaFin) : null,
+  fechaInicio: data.fechaInicio ? parseFechaLocal(data.fechaInicio) : null,
+  fechaFin: data.fechaFin ? parseFechaLocal(data.fechaFin) : null,
 });
 
 // GET /api/cursos

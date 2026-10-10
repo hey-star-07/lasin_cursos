@@ -32,12 +32,17 @@ export const exportarPDF = async (req, res, next) => {
 
     const pdfBuffer = await generarPDFLista(curso);
 
+    const nombreArchivo = `lista_${curso.nombre.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_-]/g, '')}.pdf`;
+
     res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Length', pdfBuffer.length);
     res.setHeader(
       'Content-Disposition',
-      `attachment; filename="lista_${curso.nombre.replace(/\s+/g, '_')}.pdf"`
+      `attachment; filename="${nombreArchivo}"`
     );
-    res.send(pdfBuffer);
+    res.setHeader('Cache-Control', 'no-cache');
+
+    res.end(pdfBuffer);
   } catch (error) {
     next(error);
   }
