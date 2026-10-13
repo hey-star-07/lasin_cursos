@@ -60,7 +60,7 @@ export default function EditarCursoPage({
   };
 
   return (
-    <div className="relative space-y-8 max-w-4xl">
+    <div className="relative space-y-8 max-w-6xl">
       {/* Fondo decorativo */}
       <div className="admin-blob pointer-events-none absolute -top-24 -right-24 w-80 h-80 rounded-full bg-brand-primary/15 blur-3xl" />
       <div className="admin-blob pointer-events-none absolute bottom-10 -left-24 w-72 h-72 rounded-full bg-brand-accent/10 blur-3xl [animation-delay:3s]" />

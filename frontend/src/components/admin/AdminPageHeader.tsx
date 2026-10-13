@@ -27,7 +27,7 @@ export function AdminPageHeader({
           {eyebrow}
         </p>
         <h1
-          className={`${display.className} text-4xl md:text-6xl font-extrabold tracking-tight leading-tight mb-2`}
+          className={`${display.className} text-3xl md:text-5xl font-extrabold tracking-tight leading-tight mb-2`}
         >
           <span className="admin-title-3d inline-block">
             <span className="admin-title-gradient">{title}</span>

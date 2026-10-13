@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   Plus,
   Edit,
@@ -82,6 +83,8 @@ function CursoImagen({
 }
 
 export default function AdminCursosPage() {
+  
+  const router = useRouter();
   const { cursos, loading, eliminar } = useCursos();
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -162,8 +165,9 @@ export default function AdminCursosPage() {
             return (
               <div
                 key={curso.id}
-                className="admin-enter"
+                className="admin-enter cursor-pointer"
                 style={{ animationDelay: `${Math.min(i, 8) * 90 + 150}ms` }}
+                onClick={() => router.push(`/admin/cursos/${curso.id}`)}
               >
                 <Card hover className="curso-card group h-full overflow-hidden">
                   {/* Afiche del curso (con respaldo de degradado + ícono) */}
@@ -220,21 +224,26 @@ export default function AdminCursosPage() {
                       >
                         {formatearMonto(curso.costo)}
                       </span>
-                      <div className="flex gap-2">
-                        <Link href={`/admin/cursos/${curso.id}`}>
-                          <button
-                            className="curso-action p-2.5 rounded-xl text-brand-primary bg-brand-primary/10 hover:bg-brand-primary hover:text-white"
-                            title="Editar"
-                          >
-                            <Edit size={17} />
-                          </button>
-                        </Link>
+                      <div className="flex flex-wrap gap-2">
                         <button
-                          onClick={() => setDeleteId(curso.id)}
-                          className="curso-action p-2.5 rounded-xl text-red-400 bg-red-500/10 hover:bg-red-500 hover:text-white"
-                          title="Eliminar"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            router.push(`/admin/cursos/${curso.id}`);
+                          }}
+                          className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-bold text-white bg-brand-primary hover:bg-brand-secondary shadow-lg transition-all duration-200 hover:-translate-y-0.5 cursor-pointer"
                         >
-                          <Trash2 size={17} />
+                          <Edit size={16} />
+                          Editar
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDeleteId(curso.id);
+                          }}
+                          className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-bold text-red-400 bg-red-500/10 border-2 border-red-500/40 hover:bg-red-500 hover:text-white hover:border-red-500 transition-all duration-200 hover:-translate-y-0.5 cursor-pointer"
+                        >
+                          <Trash2 size={16} />
+                          Eliminar
                         </button>
                       </div>
                     </div>

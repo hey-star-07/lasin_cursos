@@ -34,12 +34,17 @@ import './preinscripciones-admin.css';
 /* Tipos y utilidades                                                  */
 /* ------------------------------------------------------------------ */
 
+type PreinscripcionMini = { estado?: string | null };
+
 // Campos extra que quizá aún no estén en tu tipo Curso
 type CursoExtra = {
   aficheUrl?: string | null;
   instructor?: string | null;
   fechaFin?: string | null;
-  _count?: { preinscripciones?: number; inscripciones?: number };
+  // Opción A (recomendada): lista con el estado de cada preinscripción
+  preinscripciones?: PreinscripcionMini[];
+  // Opción B: solo contadores
+  _count?: { preinscripciones?: number; aceptadas?: number };
 };
 type CursoX = Curso & CursoExtra;
 
@@ -63,9 +68,29 @@ const estadoMeta: Record<Estado, { label: string; Icon: LucideIcon; clase: strin
 };
 
 const x = (c: Curso) => c as CursoX;
-const preinscritos = (c: Curso) => x(c)._count?.preinscripciones ?? 0;
-const inscritos = (c: Curso) => x(c)._count?.inscripciones ?? 0;
 const docente = (c: Curso) => x(c).instructor?.trim() || '';
+
+const esAceptada = (p: PreinscripcionMini) => p.estado?.trim().toLowerCase() === 'aceptado';
+
+/* ------------------------------------------------------------------
+   CONTADORES (esta es la lógica corregida)
+
+   - PREINSCRITOS = TODOS los que llenaron y enviaron el formulario,
+     sin importar su estado (pendiente, aceptado o rechazado).
+   - INSCRITOS    = solo los que tienen estado "aceptado".
+   Los inscritos siempre son un subconjunto de los preinscritos.
+------------------------------------------------------------------ */
+
+// Preinscritos: total de formularios recibidos (todos los estados)
+const preinscritos = (c: Curso) =>
+  x(c).preinscripciones?.length ?? x(c)._count?.preinscripciones ?? 0;
+
+// Inscritos: solo los aceptados (nunca más que los preinscritos)
+const inscritos = (c: Curso) => {
+  const lista = x(c).preinscripciones;
+  const aceptados = lista ? lista.filter(esAceptada).length : (x(c)._count?.aceptadas ?? 0);
+  return Math.min(aceptados, preinscritos(c));
+};
 
 /** Estado calculado por fechas:
  *  - finalizado: ya pasó fechaFin
@@ -81,9 +106,10 @@ function estadoDe(c: Curso): Estado {
   return 'proceso';
 }
 
+// Conversión = aceptados ÷ preinscritos (todos los que enviaron el formulario)
 const conversion = (c: Curso) => {
-  const p = preinscritos(c);
-  return p === 0 ? 0 : Math.min(100, Math.round((inscritos(c) / p) * 100));
+  const total = preinscritos(c);
+  return total === 0 ? 0 : Math.min(100, Math.round((inscritos(c) / total) * 100));
 };
 
 /* ------------------------------------------------------------------ */
@@ -231,7 +257,9 @@ export default function AdminPreinscripcionesPage() {
     return base;
   }, [cursos]);
 
+  // Suma de TODOS los formularios recibidos en todos los cursos
   const totalPreinscritos = useMemo(() => cursos.reduce((a, c) => a + preinscritos(c), 0), [cursos]);
+  // Suma de los ACEPTADOS en todos los cursos
   const totalInscritos = useMemo(() => cursos.reduce((a, c) => a + inscritos(c), 0), [cursos]);
 
   const filtrados = useMemo(() => {
@@ -289,7 +317,8 @@ export default function AdminPreinscripcionesPage() {
           <span className="pre-title-gradient">Preinscripciones</span>
         </h1>
         <p className="text-lg text-text-secondary">
-          Un vistazo a cada curso: inscritos, preinscritos y estado. Entra a uno para ver el detalle.
+          Preinscritos son todos los que enviaron el formulario; inscritos son los que fueron aceptados. Entra a un
+          curso para ver el detalle.
         </p>
 
         {!loading && cursos.length > 0 && (
@@ -541,9 +570,12 @@ export default function AdminPreinscripcionesPage() {
                           )}
                         </div>
 
-                        {/* Inscritos / preinscritos */}
+                        {/* Inscritos = aceptados · Preinscritos = todos los que enviaron el formulario */}
                         <div className="grid grid-cols-2 gap-3">
-                          <div className="pre-stat rounded-2xl bg-brand-primary/10 p-3.5 text-center">
+                          <div
+                            className="pre-stat rounded-2xl bg-brand-primary/10 p-3.5 text-center"
+                            title="Solo los que están en estado aceptado"
+                          >
                             <UserCheck size={18} className="mx-auto mb-1 text-cyan-500" />
                             <div className={`${display.className} pre-title-gradient text-3xl font-black`}>
                               <Contador valor={ins} />
@@ -551,8 +583,12 @@ export default function AdminPreinscripcionesPage() {
                             <div className="text-xs font-bold uppercase tracking-wide text-text-secondary">
                               Inscritos
                             </div>
+                            <div className="text-[11px] font-medium text-text-secondary/80">Aceptados</div>
                           </div>
-                          <div className="pre-stat rounded-2xl bg-brand-primary/10 p-3.5 text-center">
+                          <div
+                            className="pre-stat rounded-2xl bg-brand-primary/10 p-3.5 text-center"
+                            title="Todos los que enviaron el formulario, sin importar su estado"
+                          >
                             <Users size={18} className="mx-auto mb-1 text-amber-500" />
                             <div className={`${display.className} pre-title-gradient text-3xl font-black`}>
                               <Contador valor={pre} />
@@ -560,13 +596,14 @@ export default function AdminPreinscripcionesPage() {
                             <div className="text-xs font-bold uppercase tracking-wide text-text-secondary">
                               Preinscritos
                             </div>
+                            <div className="text-[11px] font-medium text-text-secondary/80">Total de formularios</div>
                           </div>
                         </div>
 
-                        {/* Conversión preinscrito → inscrito */}
+                        {/* Conversión: aceptados sobre el total de preinscritos */}
                         <div className="space-y-1.5">
                           <div className="flex items-center justify-between text-sm font-bold text-text-secondary">
-                            <span>Conversión a inscritos</span>
+                            <span>Aceptados de los preinscritos</span>
                             <span className="text-text-primary">{conv}%</span>
                           </div>
                           <div className="pre-bar">
