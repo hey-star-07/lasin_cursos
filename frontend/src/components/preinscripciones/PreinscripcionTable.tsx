@@ -154,9 +154,6 @@ export function PreinscripcionTable({
             <table className="w-full text-sm">
               <thead className="bg-bg-primary border-b-2 border-border">
                 <tr>
-                  <th className="text-center px-3 py-4 text-xs font-bold uppercase tracking-wider text-text-secondary w-12">
-                    N°
-                  </th>
                   <th className="text-left px-4 py-4 text-xs font-bold uppercase tracking-wider text-text-secondary">
                     Estudiante
                   </th>
@@ -178,16 +175,11 @@ export function PreinscripcionTable({
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((p, index) => (
+                {filtered.map((p) => (
                   <tr
                     key={p.id}
                     className="border-b border-border hover:bg-bg-hover transition-colors"
                   >
-                    <td className="px-3 py-4 text-center">
-                      <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-brand-primary/15 text-brand-primary text-xs font-black">
-                        {index + 1}
-                      </span>
-                    </td>
                     <td className="px-4 py-4">
                       <div className="font-semibold text-text-primary">
                         {p.nombres} {p.apellidoPaterno} {p.apellidoMaterno}

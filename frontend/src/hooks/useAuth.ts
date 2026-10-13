@@ -6,24 +6,43 @@ import { useAuthStore } from '@/stores/auth.store';
 import { authApi } from '@/lib/api/auth.api';
 import { toast } from 'sonner';
 
+const TOAST_ID = 'login-retry';
+
 export function useAuth() {
   const router = useRouter();
+  const pathname = usePathname();
   const { usuario, token, isAuthenticated, login, logout, _hasHydrated } =
     useAuthStore();
 
+  // Despierta el backend apenas el usuario llega a /login
+  useEffect(() => {
+    if (pathname === '/login') {
+      void authApi.warmUp();
+    }
+  }, [pathname]);
+
   const loginWithApi = async (email: string, password: string) => {
     try {
-      const response = await authApi.login({ email, password });
+      const response = await authApi.login(
+        { email, password },
+        (intento, max) => {
+          toast.loading(
+            `Conectando con el servidor… (intento ${intento + 1} de ${max})`,
+            { id: TOAST_ID }
+          );
+        }
+      );
       login(response.token, response.usuario);
       return response;
-    } catch (error) {
-      // Re-lanzar para que el componente lo maneje
-      throw error;
+    } finally {
+      toast.dismiss(TOAST_ID);
     }
   };
 
   const logoutWithRedirect = (redirectTo: string = '/') => {
     logout();
+    // Despierta el backend mientras el usuario está en la página principal
+    void authApi.warmUp();
     router.push(redirectTo);
   };
 

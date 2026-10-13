@@ -2,7 +2,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Calendar, Clock, Monitor, Award, ArrowRight } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
-import { formatearFecha, formatearMonto, truncarTexto } from '@/lib/utils/format';
+import { formatearMonto, truncarTexto } from '@/lib/utils/format';
 import type { Curso } from '@/types/curso.types';
 import { cn } from '@/lib/utils/cn';
 
@@ -41,17 +41,11 @@ export function CursoCard({ curso, variant = 'default' }: CursoCardProps) {
         <div className="absolute inset-0 bg-gradient-to-t from-bg-primary via-bg-primary/40 to-transparent" />
 
         {curso.fechaInicio && (
-          <div className="absolute top-4 left-4 flex flex-col gap-1.5">
+          <div className="absolute top-4 left-4">
             <Badge variant="primary" size="sm">
               <Calendar size={11} />
-              Inicio: {formatearFecha(curso.fechaInicio)}
+              {formatearMonto(curso.fechaInicio).replace('Bs. ', '')}
             </Badge>
-            {curso.fechaFin && (
-              <Badge variant="aceptado" size="sm">
-                <Calendar size={11} />
-                Fin: {formatearFecha(curso.fechaFin)}
-              </Badge>
-            )}
           </div>
         )}
 

@@ -4,19 +4,10 @@
 export function formatearFecha(fecha: string | null | undefined): string {
   if (!fecha) return 'Por definir';
   try {
-    // Extraer solo la parte YYYY-MM-DD para evitar shift de timezone
-    const match = String(fecha).match(/^(\d{4})-(\d{2})-(\d{2})/);
-    if (match) {
-      const [, year, month, day] = match;
-      return `${day}/${month}/${year}`;
-    }
-
-    // Fallback para otros formatos
     return new Date(fecha).toLocaleDateString('es-BO', {
       day: '2-digit',
       month: '2-digit',
       year: 'numeric',
-      timeZone: 'UTC',
     });
   } catch {
     return 'Fecha inválida';

@@ -89,13 +89,7 @@ export default function CursoDetallePage({
                 {curso.fechaInicio && (
                   <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass text-sm">
                     <Calendar size={16} className="text-brand-primary" />
-                    Inicio: {formatearFecha(curso.fechaInicio)}
-                  </div>
-                )}
-                {curso.fechaFin && (
-                  <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass text-sm">
-                    <Calendar size={16} className="text-emerald-400" />
-                    Fin: {formatearFecha(curso.fechaFin)}
+                    {formatearFecha(curso.fechaInicio)}
                   </div>
                 )}
                 {(curso.horaInicio || curso.horaFin) && (
@@ -209,17 +203,6 @@ export default function CursoDetallePage({
                       </span>
                       <span className="font-bold text-text-primary">
                         {curso.instructor}
-                      </span>
-                    </div>
-                  )}
-                  {curso.fechaFin && (
-                    <div className="cdx-info-item">
-                      <span className="cdx-info-key">
-                        <Calendar size={14} />
-                        Fin
-                      </span>
-                      <span className="cdx-info-value">
-                        {formatearFecha(curso.fechaFin)}
                       </span>
                     </div>
                   )}
