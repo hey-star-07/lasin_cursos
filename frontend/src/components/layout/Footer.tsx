@@ -56,12 +56,8 @@ export function Footer() {
             </h4>
             <ul className="space-y-3">
               <li className="flex items-center gap-2 text-sm text-text-secondary">
-                <Mail size={16} className="text-brand-primary flex-shrink-0" />
-                info@lasin.umsa.bo
-              </li>
-              <li className="flex items-center gap-2 text-sm text-text-secondary">
                 <Phone size={16} className="text-brand-primary flex-shrink-0" />
-                +591 777 12345
+                +591 77862862
               </li>
               <li className="flex items-start gap-2 text-sm text-text-secondary">
                 <MapPin

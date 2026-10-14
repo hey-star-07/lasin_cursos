@@ -510,11 +510,6 @@ export default async function HomePage() {
           </Reveal>
         </div>
       </section>
-
-      {/* ============ COPYRIGHT ============ */}
-      <p className="pb-10 text-center text-sm text-text-muted">
-        Derechos de autor © 2026 Laboratorio Superior de Informática
-      </p>
     </>
   );
 }
