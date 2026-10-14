@@ -1,4 +1,5 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
+import { useAuthStore } from '@/stores/auth.store';
 
 const API_URL =
   process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
@@ -11,25 +12,19 @@ export const apiClient = axios.create({
   timeout: 60000,
 });
 
+// Evita redirigir varias veces cuando fallan varias peticiones a la vez
+let cerrandoSesion = false;
+
 // ===== INTERCEPTOR DE REQUEST =====
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     if (typeof window !== 'undefined') {
-      const token = localStorage.getItem('token');
+      // Fuente principal: el store de sesión. Respaldo: la clave "token".
+      const token =
+        useAuthStore.getState().token || localStorage.getItem('token');
 
       if (token && config.headers) {
         config.headers.Authorization = `Bearer ${token}`;
-
-        // Debug en desarrollo
-        if (process.env.NODE_ENV === 'development') {
-          console.log(
-            `🔐 [API] ${config.method?.toUpperCase()} ${config.url} - Token enviado: ${token.substring(0, 20)}...`
-          );
-        }
-      } else if (process.env.NODE_ENV === 'development') {
-        console.warn(
-          `⚠️  [API] ${config.method?.toUpperCase()} ${config.url} - Sin token`
-        );
       }
     }
     return config;
@@ -45,25 +40,22 @@ apiClient.interceptors.response.use(
     const message =
       error.response?.data?.message || error.message || 'Error desconocido';
 
-    // Debug en desarrollo
-    if (process.env.NODE_ENV === 'development') {
-      console.error(
-        `❌ [API] Error ${status || 'network'} en ${error.config?.method?.toUpperCase()} ${error.config?.url}: ${message}`
-      );
-    }
-
     // Token expirado o inválido
     if (status === 401 && typeof window !== 'undefined') {
-      // Evitar loop infinito en el login
       const isLoginRequest = error.config?.url?.includes('/auth/login');
 
-      if (!isLoginRequest) {
-        console.warn('🚪 [API] Sesión expirada, redirigiendo a login...');
-        localStorage.removeItem('token');
-        localStorage.removeItem('usuario');
+      if (!isLoginRequest && !cerrandoSesion) {
+        cerrandoSesion = true;
 
-        if (!window.location.pathname.includes('/login')) {
-          window.location.href = '/login';
+        // Cierra la sesión en el store Y en localStorage ("auth-storage" incluido).
+        // Antes solo se borraban "token" y "usuario", el store seguía diciendo
+        // "autenticado" y /login mandaba de vuelta a /admin: bucle infinito.
+        useAuthStore.getState().logout();
+
+        if (!window.location.pathname.startsWith('/login')) {
+          window.location.replace('/login');
+        } else {
+          cerrandoSesion = false;
         }
       }
     }

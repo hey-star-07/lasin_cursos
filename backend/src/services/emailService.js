@@ -18,33 +18,175 @@ const getTransporter = () => {
   return transporter;
 };
 
-const emailTemplate = (titulo, badge, badgeColor, contenido) => `
-<!DOCTYPE html>
-<html>
+/* ============================================================
+   DISEÑO DE CORREOS
+   Gmail y Outlook ignoran flexbox, degradados y colores rgba,
+   por eso todo está hecho con tablas y colores sólidos.
+   ============================================================ */
+
+const FUENTE =
+  "'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif";
+
+const COLORES = {
+  marca: '#4F46E5',
+  marcaOscuro: '#312E81',
+  fondo: '#EEF2FF',
+  texto: '#1E293B',
+  suave: '#64748B',
+  borde: '#E2E8F0',
+  pendiente: { fuerte: '#B45309', suave: '#FEF3C7', borde: '#FCD34D' },
+  aceptado: { fuerte: '#047857', suave: '#D1FAE5', borde: '#6EE7B7' },
+  rechazado: { fuerte: '#B91C1C', suave: '#FEE2E2', borde: '#FCA5A5' },
+  info: { fuerte: '#4338CA', suave: '#EEF2FF', borde: '#C7D2FE' },
+  whatsapp: { fuerte: '#128C7E', suave: '#DCFCE7', borde: '#86EFAC' },
+};
+
+// Evita que texto escrito por usuarios rompa el HTML del correo
+const esc = (valor) =>
+  String(valor ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+
+const escMultilinea = (valor) => esc(valor).replace(/\r?\n/g, '<br>');
+
+const formatearFecha = (fecha) => {
+  if (!fecha) return 'Por definir';
+  const match = String(fecha).match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (match) {
+    const [, y, m, d] = match;
+    return `${d}/${m}/${y}`;
+  }
+  return new Date(fecha).toLocaleDateString('es-BO');
+};
+
+const formatearMonto = (costo) =>
+  costo ? `Bs. ${Number(costo).toFixed(2)}` : 'Consultar';
+
+/** Estructura general del correo */
+const emailTemplate = ({ preheader, estado, titulo, contenido }) => `<!DOCTYPE html>
+<html lang="es">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="x-apple-disable-message-reformatting">
+  <title>${esc(titulo)}</title>
 </head>
-<body style="font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; background: #0f1421; padding: 20px; margin: 0; line-height: 1.6;">
-  <div style="max-width: 550px; margin: 0 auto; background: linear-gradient(135deg, rgba(30,41,59,0.95) 0%, rgba(15,20,33,0.98) 100%); border-radius: 24px; padding: 40px 32px; border: 1px solid rgba(99,102,241,0.2); box-shadow: 0 30px 80px rgba(0,0,0,0.6);">
-    <span style="display: inline-block; padding: 8px 16px; background: ${badgeColor}; border-radius: 100px; font-size: 11px; font-weight: 800; color: #FFFFFF; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 24px;">${badge}</span>
-    <h2 style="color: #FFFFFF; font-size: 24px; font-weight: 800; margin: 0 0 24px 0; letter-spacing: -0.02em;">${titulo}</h2>
-    ${contenido}
-    <div style="margin-top: 40px; padding-top: 24px; border-top: 1px solid rgba(255,255,255,0.08); text-align: center; color: #64748B; font-size: 12px;">
-      Laboratorio Superior de Informática<br>
-      Este es un mensaje automático, no responder.
-    </div>
+<body style="margin:0; padding:0; background-color:${COLORES.fondo}; font-family:${FUENTE};">
+  <!-- Texto de vista previa en la bandeja de entrada -->
+  <div style="display:none; max-height:0; overflow:hidden; opacity:0; font-size:1px; line-height:1px; color:${COLORES.fondo};">
+    ${esc(preheader)}
   </div>
-</body>
-</html>
-`;
 
-const infoRow = (label, value) => `
-<div style="display: flex; justify-content: space-between; align-items: center; padding: 14px 0; border-bottom: 1px solid rgba(255,255,255,0.08);">
-  <span style="color: #64748B; font-size: 13px; font-weight: 600;">${label}</span>
-  <span style="color: #FFFFFF; font-size: 15px; font-weight: 700; text-align: right;">${value}</span>
-</div>
-`;
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${COLORES.fondo}" style="background-color:${COLORES.fondo};">
+    <tr>
+      <td align="center" style="padding:32px 12px;">
+
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:100%; max-width:600px;">
+
+          <!-- Encabezado -->
+          <tr>
+            <td align="center" bgcolor="${COLORES.marca}" style="background-color:${COLORES.marca}; border-radius:16px 16px 0 0; padding:32px 24px;">
+              <div style="font-family:${FUENTE}; font-size:30px; font-weight:800; letter-spacing:4px; color:#FFFFFF;">LASIN</div>
+              <div style="font-family:${FUENTE}; font-size:12px; letter-spacing:1px; text-transform:uppercase; color:#C7D2FE; margin-top:6px;">
+                Laboratorio Superior de Informática &middot; UMSA
+              </div>
+            </td>
+          </tr>
+
+          <!-- Cuerpo -->
+          <tr>
+            <td bgcolor="#FFFFFF" style="background-color:#FFFFFF; padding:36px 32px 32px 32px; border-left:1px solid ${COLORES.borde}; border-right:1px solid ${COLORES.borde};">
+
+              <!-- Estado -->
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td bgcolor="${estado.suave}" style="background-color:${estado.suave}; border:1px solid ${estado.borde}; border-radius:100px; padding:7px 16px; font-family:${FUENTE}; font-size:12px; font-weight:700; letter-spacing:0.5px; text-transform:uppercase; color:${estado.fuerte};">
+                    ${estado.etiqueta}
+                  </td>
+                </tr>
+              </table>
+
+              <h1 style="font-family:${FUENTE}; font-size:26px; line-height:1.25; font-weight:800; color:${COLORES.texto}; margin:20px 0 20px 0;">
+                ${esc(titulo)}
+              </h1>
+
+              ${contenido}
+            </td>
+          </tr>
+
+          <!-- Pie -->
+          <tr>
+            <td align="center" bgcolor="#F8FAFC" style="background-color:#F8FAFC; border:1px solid ${COLORES.borde}; border-radius:0 0 16px 16px; padding:24px; font-family:${FUENTE}; font-size:12px; line-height:1.7; color:${COLORES.suave};">
+              <strong style="color:${COLORES.texto};">Laboratorio Superior de Informática</strong><br>
+              Carrera de Informática &middot; Universidad Mayor de San Andrés<br>
+              <span style="color:#94A3B8;">Este es un mensaje automático, por favor no respondas a este correo.</span>
+            </td>
+          </tr>
+
+        </table>
+
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+
+const parrafo = (html) => `
+<p style="font-family:${FUENTE}; font-size:15px; line-height:1.7; color:${COLORES.texto}; margin:0 0 16px 0;">${html}</p>`;
+
+/** Tabla de datos (etiqueta a la izquierda, valor a la derecha) */
+const tablaInfo = (filas, tono = COLORES.info) => `
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:8px 0 24px 0; border:1px solid ${COLORES.borde}; border-radius:12px; border-collapse:separate; overflow:hidden;">
+  ${filas
+    .map(
+      ([label, value], i) => `
+  <tr>
+    <td width="38%" valign="top" bgcolor="${tono.suave}" style="background-color:${tono.suave}; padding:13px 16px; ${i < filas.length - 1 ? `border-bottom:1px solid ${COLORES.borde};` : ''} font-family:${FUENTE}; font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:${tono.fuerte};">
+      ${esc(label)}
+    </td>
+    <td valign="top" bgcolor="#FFFFFF" style="background-color:#FFFFFF; padding:13px 16px; ${i < filas.length - 1 ? `border-bottom:1px solid ${COLORES.borde};` : ''} font-family:${FUENTE}; font-size:15px; font-weight:600; color:${COLORES.texto};">
+      ${esc(value)}
+    </td>
+  </tr>`
+    )
+    .join('')}
+</table>`;
+
+/** Recuadro de aviso con barra de color a la izquierda */
+const aviso = (tono, titulo, htmlTexto) => `
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 20px 0;">
+  <tr>
+    <td width="5" bgcolor="${tono.fuerte}" style="background-color:${tono.fuerte}; border-radius:6px 0 0 6px; font-size:0; line-height:0;">&nbsp;</td>
+    <td bgcolor="${tono.suave}" style="background-color:${tono.suave}; border-radius:0 10px 10px 0; padding:16px 18px; font-family:${FUENTE}; font-size:14px; line-height:1.65; color:${COLORES.texto};">
+      ${titulo ? `<div style="font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:0.6px; color:${tono.fuerte}; margin-bottom:6px;">${titulo}</div>` : ''}
+      ${htmlTexto}
+    </td>
+  </tr>
+</table>`;
+
+/** Botón compatible con Gmail/Outlook */
+const boton = (href, texto, color) => `
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin-top:16px;">
+  <tr>
+    <td align="center" bgcolor="${color}" style="background-color:${color}; border-radius:10px;">
+      <a href="${esc(href)}" target="_blank" style="display:inline-block; padding:14px 30px; font-family:${FUENTE}; font-size:14px; font-weight:800; letter-spacing:0.4px; color:#FFFFFF; text-decoration:none; border-radius:10px;">${texto}</a>
+    </td>
+  </tr>
+</table>`;
+
+const nombreCompleto = (p, conMaterno = false) =>
+  [p.nombres, p.apellidoPaterno, conMaterno ? p.apellidoMaterno : '']
+    .filter(Boolean)
+    .join(' ');
+
+const esUrlSegura = (url) => /^https?:\/\//i.test(String(url || ''));
+
+/* ============================================================
+   CORREOS
+   ============================================================ */
 
 export const sendConfirmationEmail = async (preinscripcion) => {
   const t = getTransporter();
@@ -53,28 +195,32 @@ export const sendConfirmationEmail = async (preinscripcion) => {
     return;
   }
 
-  const cursoNombre = preinscripcion.curso.nombre;
-  const monto = preinscripcion.curso.costo
-    ? `Bs. ${Number(preinscripcion.curso.costo).toFixed(2)}`
-    : 'Consultar';
-  const nombreCompleto = `${preinscripcion.nombres} ${preinscripcion.apellidoPaterno} ${preinscripcion.apellidoMaterno || ''}`.trim();
+  const c = preinscripcion.curso;
 
   const contenido = `
-    ${infoRow('Curso', cursoNombre)}
-    ${infoRow('Monto', monto)}
-    ${infoRow('Nombre', nombreCompleto)}
-    <div style="margin-top: 28px; padding: 20px; background: rgba(99,102,241,0.1); border-radius: 16px; border-left: 4px solid #6366F1;">
-      <p style="margin: 0; color: #94A3B8; font-size: 14px; line-height: 1.7;">
-        Espere que el administrador compruebe su pago y recibirá un correo de confirmación.
-      </p>
-    </div>
+    ${parrafo(`Hola <strong>${esc(preinscripcion.nombres)}</strong>, recibimos tu preinscripción correctamente. Estos son los datos registrados:`)}
+    ${tablaInfo([
+      ['Curso', c.nombre],
+      ['Monto', formatearMonto(c.costo)],
+      ['Nombre', nombreCompleto(preinscripcion, true)],
+    ])}
+    ${aviso(
+      COLORES.pendiente,
+      '¿Qué sigue?',
+      'Espera a que el administrador verifique tu comprobante de pago. Cuando esté revisado, recibirás un correo con la confirmación.'
+    )}
   `;
 
   await t.sendMail({
     from: env.SMTP_FROM || env.SMTP_USER,
     to: preinscripcion.correo,
     subject: '📋 Preinscripción recibida',
-    html: emailTemplate('Preinscripción llenada correctamente', '⏳ Pendiente', 'linear-gradient(135deg, rgba(99,102,241,0.25) 0%, rgba(139,92,246,0.2) 100%)', contenido),
+    html: emailTemplate({
+      preheader: `Recibimos tu preinscripción al curso ${c.nombre}. Estamos verificando tu pago.`,
+      estado: { ...COLORES.pendiente, etiqueta: '⏳ Pendiente de revisión' },
+      titulo: 'Preinscripción registrada',
+      contenido,
+    }),
   });
 };
 
@@ -83,62 +229,52 @@ export const sendAceptadoEmail = async (preinscripcion, observacion) => {
   if (!t) return;
 
   const c = preinscripcion.curso;
-  const horario = c.horaInicio && c.horaFin ? `${c.horaInicio} - ${c.horaFin}` : 'Por definir';
-  const monto = c.costo ? `Bs. ${Number(c.costo).toFixed(2)}` : 'Consultar';
-  const nombre = `${preinscripcion.nombres} ${preinscripcion.apellidoPaterno}`;
+  const horario =
+    c.horaInicio && c.horaFin ? `${c.horaInicio} - ${c.horaFin}` : 'Por definir';
 
-  const formatearFecha = (fecha) => {
-    if (!fecha) return 'Por definir';
-    const match = String(fecha).match(/^(\d{4})-(\d{2})-(\d{2})/);
-    if (match) {
-      const [, y, m, d] = match;
-      return `${d}/${m}/${y}`;
-    }
-    return new Date(fecha).toLocaleDateString('es-BO');
-  };
+  const whatsappBlock =
+    c.enlaceWhatsapp && esUrlSegura(c.enlaceWhatsapp)
+      ? aviso(
+          COLORES.whatsapp,
+          '📱 Grupo oficial de WhatsApp',
+          `Únete al grupo del curso para recibir avisos, material y coordinar con tus compañeros.
+           ${boton(c.enlaceWhatsapp, 'Unirme al grupo', '#128C7E')}`
+        )
+      : '';
 
-  // Bloque de WhatsApp (solo si el curso tiene enlace)
-  const whatsappBlock = c.enlaceWhatsapp
-    ? `
-      <div style="margin-top: 28px; padding: 24px; background: linear-gradient(135deg, rgba(37,211,102,0.15) 0%, rgba(18,140,126,0.1) 100%); border-radius: 16px; border: 2px solid rgba(37,211,102,0.4);">
-        <p style="margin: 0 0 12px 0; color: #25D366; font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em;">
-          📱 Grupo Oficial de WhatsApp
-        </p>
-        <p style="margin: 0 0 16px 0; color: #94A3B8; font-size: 14px; line-height: 1.6;">
-          Únete al grupo oficial del curso para recibir avisos, material y coordinar con tus compañeros.
-        </p>
-        <a href="${c.enlaceWhatsapp}" style="display: inline-block; padding: 14px 28px; background: linear-gradient(135deg, #25D366 0%, #128C7E 100%); color: #FFFFFF; text-decoration: none; border-radius: 12px; font-weight: 800; font-size: 14px; text-transform: uppercase; letter-spacing: 0.05em;">
-          🚀 Unirme al Grupo
-        </a>
-      </div>
-    `
+  const detalle = observacion
+    ? aviso(COLORES.info, 'Detalle', escMultilinea(observacion))
     : '';
 
   const contenido = `
-    <p style="color: #94A3B8; margin: 0 0 24px 0;">Hola <strong style="color: #FFFFFF;">${nombre}</strong>,</p>
-    <p style="color: #94A3B8; margin: 0 0 24px 0;">Tu inscripción fue <span style="color: #10B981; font-weight: 700;">APROBADA</span>.</p>
-    <div style="background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.3); border-radius: 16px; padding: 24px; margin: 24px 0;">
-      ${infoRow('Curso', c.nombre)}
-      ${infoRow('Modalidad', c.modalidad || 'N/A')}
-      ${infoRow('Inicio', formatearFecha(c.fechaInicio))}
-      ${infoRow('Fin', formatearFecha(c.fechaFin))}
-      ${infoRow('Horario', horario)}
-      ${infoRow('Duración', c.duracion || 'N/A')}
-      ${infoRow('Inversión', monto)}
-    </div>
+    ${parrafo(`Hola <strong>${esc(preinscripcion.nombres)} ${esc(preinscripcion.apellidoPaterno)}</strong>,`)}
+    ${parrafo(`¡Buenas noticias! Tu inscripción fue <strong style="color:${COLORES.aceptado.fuerte};">aprobada</strong>. Te esperamos en clases.`)}
+    ${tablaInfo(
+      [
+        ['Curso', c.nombre],
+        ['Modalidad', c.modalidad || 'N/A'],
+        ['Inicio', formatearFecha(c.fechaInicio)],
+        ['Fin', formatearFecha(c.fechaFin)],
+        ['Horario', horario],
+        ['Duración', c.duracion || 'N/A'],
+        ['Inversión', formatearMonto(c.costo)],
+      ],
+      COLORES.aceptado
+    )}
     ${whatsappBlock}
-    ${observacion ? `
-      <div style="margin-top: 24px; padding: 20px; background: rgba(99,102,241,0.1); border-radius: 16px; border-left: 4px solid #6366F1;">
-        <p style="margin: 0; color: #94A3B8; font-size: 14px;"><strong style="color: #A5B4FC;">Detalle:</strong><br>${observacion}</p>
-      </div>
-    ` : ''}
+    ${detalle}
   `;
 
   await t.sendMail({
     from: env.SMTP_FROM || env.SMTP_USER,
     to: preinscripcion.correo,
     subject: `✅ Inscripción confirmada - ${c.nombre}`,
-    html: emailTemplate('Inscripción Confirmada', '✅ Confirmado', 'linear-gradient(135deg, rgba(16,185,129,0.25) 0%, rgba(5,150,105,0.2) 100%)', contenido),
+    html: emailTemplate({
+      preheader: `Tu inscripción a ${c.nombre} fue aprobada. Inicio: ${formatearFecha(c.fechaInicio)}.`,
+      estado: { ...COLORES.aceptado, etiqueta: '✅ Inscripción confirmada' },
+      titulo: '¡Bienvenido al curso!',
+      contenido,
+    }),
   });
 };
 
@@ -147,28 +283,32 @@ export const sendRechazadoEmail = async (preinscripcion, observacion) => {
   if (!t) return;
 
   const c = preinscripcion.curso;
-  const nombre = `${preinscripcion.nombres} ${preinscripcion.apellidoPaterno}`;
+
+  const detalle = observacion
+    ? aviso(COLORES.rechazado, 'Motivo', escMultilinea(observacion))
+    : '';
 
   const contenido = `
-    <p style="color: #94A3B8; margin: 0 0 24px 0;">Hola <strong style="color: #FFFFFF;">${nombre}</strong>,</p>
-    <p style="color: #94A3B8; margin: 0 0 24px 0;">Tu comprobante fue <span style="color: #EF4444; font-weight: 700;">RECHAZADO</span>.</p>
-    <div style="background: rgba(99,102,241,0.1); border: 1px solid rgba(99,102,241,0.2); border-radius: 16px; padding: 20px; margin: 24px 0;">
-      <p style="margin: 0; color: #94A3B8; font-size: 14px;"><strong style="color: #A5B4FC;">Curso:</strong> ${c.nombre}</p>
-    </div>
-    ${observacion ? `
-      <div style="margin-top: 24px; padding: 20px; background: rgba(239,68,68,0.1); border-radius: 16px; border-left: 4px solid #EF4444;">
-        <p style="margin: 0; color: #94A3B8; font-size: 14px;"><strong style="color: #FCA5A5;">Detalle:</strong><br>${observacion}</p>
-      </div>
-    ` : ''}
-    <div style="margin-top: 28px; padding: 20px; background: rgba(99,102,241,0.15); border-radius: 16px; border: 1px solid rgba(99,102,241,0.3);">
-      <p style="margin: 0; color: #A5B4FC; font-size: 14px; font-weight: 600;">🏢 Debes apersonarte al LASIN para regularizar tu inscripción.</p>
-    </div>
+    ${parrafo(`Hola <strong>${esc(preinscripcion.nombres)} ${esc(preinscripcion.apellidoPaterno)}</strong>,`)}
+    ${parrafo(`Revisamos tu comprobante y lamentablemente fue <strong style="color:${COLORES.rechazado.fuerte};">rechazado</strong>.`)}
+    ${tablaInfo([['Curso', c.nombre]], COLORES.rechazado)}
+    ${detalle}
+    ${aviso(
+      COLORES.info,
+      'Qué debes hacer',
+      '🏢 Debes apersonarte al LASIN para regularizar tu inscripción.'
+    )}
   `;
 
   await t.sendMail({
     from: env.SMTP_FROM || env.SMTP_USER,
     to: preinscripcion.correo,
     subject: `⚠️ Revisión de comprobante - ${c.nombre}`,
-    html: emailTemplate('Comprobante Rechazado', '⚠️ Revisión', 'linear-gradient(135deg, rgba(239,68,68,0.25) 0%, rgba(220,38,38,0.2) 100%)', contenido),
+    html: emailTemplate({
+      preheader: `Tu comprobante para ${c.nombre} necesita revisión. Contáctanos para regularizarlo.`,
+      estado: { ...COLORES.rechazado, etiqueta: '⚠️ Comprobante observado' },
+      titulo: 'Necesitamos revisar tu comprobante',
+      contenido,
+    }),
   });
 };

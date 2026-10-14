@@ -26,10 +26,6 @@ const signToken = (id) => {
 const sendTokenResponse = (usuario, statusCode, res) => {
   const token = signToken(usuario.id);
 
-  // Debug: verificar que el token se genera
-  console.log(`[AUTH] ✅ Token generado para ${usuario.email} (id: ${usuario.id})`);
-  console.log(`[AUTH]    Token preview: ${token.substring(0, 30)}...`);
-
   res.status(statusCode).json({
     status: 'ok',
     token,

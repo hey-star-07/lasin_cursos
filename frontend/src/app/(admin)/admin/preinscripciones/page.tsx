@@ -12,6 +12,7 @@ import {
   BookOpen,
   Monitor,
   CalendarDays,
+  CalendarCheck,
   RotateCcw,
   Sparkles,
   PlayCircle,
@@ -43,7 +44,8 @@ type CursoExtra = {
   fechaFin?: string | null;
   // Opción A (recomendada): lista con el estado de cada preinscripción
   preinscripciones?: PreinscripcionMini[];
-  // Opción B: solo contadores
+  // Contadores que envía el backend (/api/cursos):
+  //   preinscripciones = todos los formularios, aceptadas = solo aceptados
   _count?: { preinscripciones?: number; aceptadas?: number };
 };
 type CursoX = Curso & CursoExtra;
@@ -563,9 +565,21 @@ export default function AdminPreinscripcionesPage() {
                             </span>
                           )}
                           {curso.fechaInicio && (
-                            <span className="inline-flex items-center gap-1.5 rounded-full bg-brand-primary/10 px-3 py-1.5">
+                            <span
+                              className="inline-flex items-center gap-1.5 rounded-full bg-brand-primary/10 px-3 py-1.5"
+                              title="Inicio de clases"
+                            >
                               <CalendarDays size={15} className="text-brand-primary" />
-                              {formatearFecha(curso.fechaInicio)}
+                              Inicio: {formatearFecha(curso.fechaInicio)}
+                            </span>
+                          )}
+                          {x(curso).fechaFin && (
+                            <span
+                              className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-3 py-1.5"
+                              title="Fin de clases"
+                            >
+                              <CalendarCheck size={15} className="text-emerald-500" />
+                              Fin: {formatearFecha(x(curso).fechaFin)}
                             </span>
                           )}
                         </div>

@@ -25,3 +25,22 @@ export const COLORES_CURSO = [
   '#3B82F6',
   '#EF4444',
 ] as const;
+
+/* ============================================================
+   Datos de contacto de LASIN (editar aquí y se actualiza en
+   la barra, el footer y las páginas Proceso y Contacto)
+   ============================================================ */
+export const CONTACTO = {
+  telefono: '+591 77862862',
+  whatsappNumero: '59177862862',
+  whatsappUrl: 'https://wa.me/59177862862',
+  whatsappMensaje:
+    'Hola, quisiera información sobre los cursos del LASIN.',
+  direccion: 'UMSA, Campus Universitario, La Paz - Bolivia',
+  sitioWeb: 'https://lasin.fcpn.edu.bo',
+  mapaEmbed:
+    'https://www.google.com/maps?q=Laboratorio+Superior+de+Inform%C3%A1tica+UMSA+La+Paz+Bolivia&output=embed',
+} as const;
+
+export const whatsappLink = (mensaje: string = CONTACTO.whatsappMensaje) =>
+  `${CONTACTO.whatsappUrl}?text=${encodeURIComponent(mensaje)}`;

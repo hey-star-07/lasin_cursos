@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   FileText,
   Search,
@@ -8,12 +8,12 @@ import {
   Check,
   X,
   Clock,
-  Download,
   FileSpreadsheet,
+  ImageOff,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { Badge, EstadoBadge } from '@/components/ui/Badge';
+import { EstadoBadge } from '@/components/ui/Badge';
 import { Modal } from '@/components/ui/Modal';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import { EmptyState } from '@/components/shared/EmptyState';
@@ -24,14 +24,26 @@ import { exportApi } from '@/lib/api/export.api';
 import { toast } from 'sonner';
 import type { EstadoPreinscripcion } from '@/types/preinscripcion.types';
 
+export interface PreinscripcionStats {
+  /** Todos los formularios recibidos (preinscritos) */
+  total: number;
+  /** Solo los aceptados (inscritos) */
+  aceptados: number;
+}
+
 interface PreinscripcionTableProps {
   cursoId: number;
   cursoNombre: string;
+  /** Se llama cada vez que cambia la lista, para mantener los contadores del curso al día */
+  onStatsChange?: (stats: PreinscripcionStats) => void;
 }
+
+const esPDF = (url: string) => /\.pdf($|\?)/i.test(url);
 
 export function PreinscripcionTable({
   cursoId,
   cursoNombre,
+  onStatsChange,
 }: PreinscripcionTableProps) {
   const [search, setSearch] = useState('');
   const [estadoFilter, setEstadoFilter] = useState<EstadoPreinscripcion | ''>(
@@ -43,6 +55,8 @@ export function PreinscripcionTable({
     estado: EstadoPreinscripcion;
   } | null>(null);
   const [exporting, setExporting] = useState<'pdf' | 'excel' | null>(null);
+  const [comprobanteId, setComprobanteId] = useState<number | null>(null);
+  const [comprobanteError, setComprobanteError] = useState(false);
 
   const {
     preinscripciones,
@@ -64,8 +78,33 @@ export function PreinscripcionTable({
   });
 
   const selected = preinscripciones.find((p) => p.id === selectedId);
+  const conComprobante = preinscripciones.find((p) => p.id === comprobanteId);
+
+  // PDF y Excel solo contienen estudiantes aceptados: sin aceptados no tiene sentido exportar
+  const totalAceptados = preinscripciones.filter(
+    (p) => p.estado === 'aceptado'
+  ).length;
+  const puedeExportar = totalAceptados > 0;
+
+  // Avisar al padre para que sus contadores (preinscritos / inscritos) se actualicen al instante
+  useEffect(() => {
+    if (loading) return;
+    onStatsChange?.({
+      total: preinscripciones.length,
+      aceptados: totalAceptados,
+    });
+  }, [loading, preinscripciones.length, totalAceptados, onStatsChange]);
+
+  const abrirComprobante = (id: number) => {
+    setComprobanteError(false);
+    setComprobanteId(id);
+  };
 
   const handleExport = async (tipo: 'pdf' | 'excel') => {
+    if (!puedeExportar) {
+      toast.error('Solo se puede exportar cuando hay estudiantes aceptados');
+      return;
+    }
     try {
       setExporting(tipo);
       if (tipo === 'pdf') {
@@ -118,7 +157,12 @@ export function PreinscripcionTable({
             icon={<FileText size={16} />}
             onClick={() => handleExport('pdf')}
             loading={exporting === 'pdf'}
-            disabled={filtered.length === 0}
+            disabled={!puedeExportar}
+            title={
+              puedeExportar
+                ? `Exportar lista de ${totalAceptados} aceptado(s)`
+                : 'Disponible cuando haya estudiantes aceptados'
+            }
           >
             PDF
           </Button>
@@ -128,7 +172,12 @@ export function PreinscripcionTable({
             icon={<FileSpreadsheet size={16} />}
             onClick={() => handleExport('excel')}
             loading={exporting === 'excel'}
-            disabled={filtered.length === 0}
+            disabled={!puedeExportar}
+            title={
+              puedeExportar
+                ? `Exportar planilla de ${totalAceptados} aceptado(s)`
+                : 'Disponible cuando haya estudiantes aceptados'
+            }
           >
             Excel
           </Button>
@@ -207,15 +256,14 @@ export function PreinscripcionTable({
                     <td className="px-4 py-4 font-mono text-xs">{p.ci || '-'}</td>
                     <td className="px-4 py-4 text-center">
                       {p.comprobanteUrl ? (
-                        <a
-                          href={p.comprobanteUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 text-xs font-bold text-brand-primary hover:underline"
+                        <button
+                          type="button"
+                          onClick={() => abrirComprobante(p.id)}
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold text-brand-primary hover:bg-brand-primary/15 transition-colors cursor-pointer"
                         >
                           <Eye size={14} />
                           Ver
-                        </a>
+                        </button>
                       ) : (
                         <span className="text-xs text-text-muted">Sin archivo</span>
                       )}
@@ -279,6 +327,54 @@ export function PreinscripcionTable({
         variant={confirmAction?.estado === 'rechazado' ? 'danger' : 'primary'}
         confirmText="Sí, confirmar"
       />
+
+      {/* Comprobante de pago (se ve aquí mismo, sin abrir otra ventana) */}
+      <Modal
+        isOpen={!!conComprobante}
+        onClose={() => setComprobanteId(null)}
+        title={
+          conComprobante
+            ? `Comprobante · ${conComprobante.nombres} ${conComprobante.apellidoPaterno}`
+            : 'Comprobante'
+        }
+        size="xl"
+      >
+        {conComprobante?.comprobanteUrl && (
+          <div className="space-y-4">
+            {esPDF(conComprobante.comprobanteUrl) ? (
+              <iframe
+                src={conComprobante.comprobanteUrl}
+                title="Comprobante de pago"
+                className="w-full h-[70vh] rounded-xl border border-border bg-white"
+              />
+            ) : comprobanteError ? (
+              <div className="flex flex-col items-center gap-3 py-16 text-text-muted">
+                <ImageOff size={48} />
+                <p className="text-sm font-semibold">
+                  No se pudo cargar el comprobante.
+                </p>
+              </div>
+            ) : (
+              <div className="flex justify-center rounded-xl bg-bg-primary border border-border p-3">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={conComprobante.comprobanteUrl}
+                  alt="Comprobante de pago"
+                  onError={() => setComprobanteError(true)}
+                  className="max-h-[70vh] w-auto max-w-full rounded-lg object-contain"
+                />
+              </div>
+            )}
+
+            <div className="flex items-center justify-between gap-3 text-xs text-text-muted">
+              <span>
+                {conComprobante.correo} · {formatearFecha(conComprobante.createdAt)}
+              </span>
+              <EstadoBadge estado={conComprobante.estado} />
+            </div>
+          </div>
+        )}
+      </Modal>
 
       {/* Ver detalle */}
       <Modal

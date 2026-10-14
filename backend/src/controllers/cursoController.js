@@ -48,6 +48,49 @@ const parseFechas = (data) => ({
   fechaFin: data.fechaFin ? parseFechaLocal(data.fechaFin) : null,
 });
 
+/**
+ * Cuenta las preinscripciones de uno o varios cursos, agrupadas por estado.
+ * Devuelve un Map<cursoId, { total, aceptadas, pendientes, rechazadas }>.
+ *
+ *  - total      = TODOS los formularios recibidos (cualquier estado)  -> "Preinscritos"
+ *  - aceptadas  = solo estado "aceptado"                              -> "Inscritos"
+ */
+const contarPreinscripciones = async (cursoIds) => {
+  const mapa = new Map();
+  const vacio = () => ({ total: 0, aceptadas: 0, pendientes: 0, rechazadas: 0 });
+
+  cursoIds.forEach((id) => mapa.set(id, vacio()));
+  if (cursoIds.length === 0) return mapa;
+
+  const grupos = await prisma.preinscripcion.groupBy({
+    by: ['cursoId', 'estado'],
+    where: { cursoId: { in: cursoIds } },
+    _count: { _all: true },
+  });
+
+  for (const g of grupos) {
+    const c = mapa.get(g.cursoId) ?? vacio();
+    const n = g._count._all;
+    c.total += n;
+    if (g.estado === 'aceptado') c.aceptadas += n;
+    else if (g.estado === 'rechazado') c.rechazadas += n;
+    else c.pendientes += n;
+    mapa.set(g.cursoId, c);
+  }
+
+  return mapa;
+};
+
+const conConteos = (curso, conteo) => ({
+  ...curso,
+  _count: {
+    preinscripciones: conteo?.total ?? 0, // preinscritos (todos)
+    aceptadas: conteo?.aceptadas ?? 0, // inscritos (aceptados)
+    pendientes: conteo?.pendientes ?? 0,
+    rechazadas: conteo?.rechazadas ?? 0,
+  },
+});
+
 // GET /api/cursos
 export const listarCursos = async (req, res, next) => {
   try {
@@ -58,17 +101,13 @@ export const listarCursos = async (req, res, next) => {
       where.publicado = publicado === 'true';
     }
 
-    const cursos = await prisma.curso.findMany({
+    const lista = await prisma.curso.findMany({
       where,
       orderBy: { createdAt: 'desc' },
-      include: {
-        _count: {
-          select: {
-            preinscripciones: { where: { estado: 'aceptado' } },
-          },
-        },
-      },
     });
+
+    const conteos = await contarPreinscripciones(lista.map((c) => c.id));
+    const cursos = lista.map((c) => conConteos(c, conteos.get(c.id)));
 
     res.json({ status: 'ok', total: cursos.length, cursos });
   } catch (error) {
@@ -83,19 +122,16 @@ export const obtenerCurso = async (req, res, next) => {
 
     const curso = await prisma.curso.findUnique({
       where: { id: parseInt(id) },
-      include: {
-        preinscripciones: {
-          where: { estado: 'aceptado' },
-          select: { id: true, nombres: true, apellidoPaterno: true },
-        },
-      },
     });
 
     if (!curso) {
       throw new AppError('Curso no encontrado', 404);
     }
 
-    res.json({ status: 'ok', curso });
+    // Solo contadores: esta ruta es pública, no se exponen nombres de estudiantes
+    const conteos = await contarPreinscripciones([curso.id]);
+
+    res.json({ status: 'ok', curso: conConteos(curso, conteos.get(curso.id)) });
   } catch (error) {
     next(error);
   }

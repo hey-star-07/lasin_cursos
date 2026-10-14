@@ -21,8 +21,16 @@ export interface Curso {
   publicado: boolean;
   createdAt: string;
   updatedAt: string;
+  /**
+   * Contadores que calcula el backend:
+   *  - preinscripciones: TODOS los formularios recibidos (preinscritos)
+   *  - aceptadas: solo los aceptados (inscritos)
+   */
   _count?: {
     preinscripciones: number;
+    aceptadas: number;
+    pendientes: number;
+    rechazadas: number;
   };
 }
 

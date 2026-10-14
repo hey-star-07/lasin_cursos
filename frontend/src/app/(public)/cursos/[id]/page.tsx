@@ -4,14 +4,20 @@ import { use } from 'react';
 import Image from 'next/image';
 import {
   Calendar,
+  CalendarCheck,
   Clock,
+  Hourglass,
   Monitor,
   Award,
   Users,
+  Layers,
   CheckCircle2,
   FileText,
   Info,
+  MessageCircle,
+  ArrowDown,
 } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { useCurso } from '@/hooks/useCursos';
 import { Badge } from '@/components/ui/Badge';
 import { Card, CardBody } from '@/components/ui/Card';
@@ -23,6 +29,38 @@ import {
   formatearHorario,
   formatearMonto,
 } from '@/lib/utils/format';
+import { whatsappLink } from '@/lib/utils/constants';
+
+/** Tarjeta de dato destacado del curso (inicio, fin, horario, carga horaria). */
+function InfoCard({
+  icon: Icon,
+  label,
+  value,
+  tono,
+}: {
+  icon: LucideIcon;
+  label: string;
+  value: string;
+  tono: string;
+}) {
+  return (
+    <div className="glass rounded-2xl p-4 flex items-center gap-3.5 min-w-0">
+      <div
+        className={`w-11 h-11 shrink-0 rounded-xl grid place-items-center ${tono}`}
+      >
+        <Icon size={20} />
+      </div>
+      <div className="min-w-0">
+        <p className="text-[11px] font-bold uppercase tracking-wider text-text-muted leading-none mb-1.5">
+          {label}
+        </p>
+        <p className="text-base md:text-lg font-black text-text-primary leading-tight">
+          {value}
+        </p>
+      </div>
+    </div>
+  );
+}
 
 export default function CursoDetallePage({
   params,
@@ -85,31 +123,35 @@ export default function CursoDetallePage({
                 </p>
               )}
 
-              <div className="flex flex-wrap gap-3 mt-8">
-                {curso.fechaInicio && (
-                  <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass text-sm">
-                    <Calendar size={16} className="text-brand-primary" />
-                    Inicio: {formatearFecha(curso.fechaInicio)}
-                  </div>
-                )}
-                {curso.fechaFin && (
-                  <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass text-sm">
-                    <Calendar size={16} className="text-emerald-400" />
-                    Fin: {formatearFecha(curso.fechaFin)}
-                  </div>
-                )}
-                {(curso.horaInicio || curso.horaFin) && (
-                  <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass text-sm">
-                    <Clock size={16} className="text-brand-primary" />
-                    {formatearHorario(curso.horaInicio, curso.horaFin)}
-                  </div>
-                )}
-                {curso.totalHoras && (
-                  <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass text-sm">
-                    <Award size={16} className="text-brand-primary" />
-                    {curso.totalHoras} hrs
-                  </div>
-                )}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-8 max-w-2xl">
+                <InfoCard
+                  icon={Calendar}
+                  label="Inicio de clases"
+                  value={formatearFecha(curso.fechaInicio)}
+                  tono="bg-brand-primary/20 text-brand-primary"
+                />
+                <InfoCard
+                  icon={CalendarCheck}
+                  label="Fin de clases"
+                  value={formatearFecha(curso.fechaFin)}
+                  tono="bg-emerald-500/20 text-emerald-400"
+                />
+                <InfoCard
+                  icon={Clock}
+                  label="Horario"
+                  value={formatearHorario(curso.horaInicio, curso.horaFin)}
+                  tono="bg-cyan-500/20 text-cyan-400"
+                />
+                <InfoCard
+                  icon={Hourglass}
+                  label="Carga horaria"
+                  value={
+                    curso.totalHoras
+                      ? `${curso.totalHoras} horas`
+                      : curso.duracion || 'Por definir'
+                  }
+                  tono="bg-amber-500/20 text-amber-400"
+                />
               </div>
             </div>
 
@@ -234,14 +276,14 @@ export default function CursoDetallePage({
                       </span>
                     </div>
                   )}
-                  {curso.fechaFin && (
-                    <div className="cdx-info-item">
-                      <span className="cdx-info-key">
-                        <Calendar size={14} />
-                        Fin
+                  {curso.nivel && (
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-text-muted flex items-center gap-2">
+                        <Layers size={14} />
+                        Nivel
                       </span>
-                      <span className="cdx-info-value">
-                        {formatearFecha(curso.fechaFin)}
+                      <span className="font-bold text-text-primary">
+                        {curso.nivel}
                       </span>
                     </div>
                   )}
@@ -252,6 +294,27 @@ export default function CursoDetallePage({
                     <Award size={14} />
                     Certificado incluido
                   </p>
+                </div>
+
+                <div className="space-y-3">
+                  <a
+                    href="#preinscripcion"
+                    className="flex w-full items-center justify-center gap-2 px-5 py-3.5 rounded-xl gradient-brand text-white font-bold shadow-lg shadow-brand-primary/30 hover:scale-[1.02] transition-transform"
+                  >
+                    Preinscribirme
+                    <ArrowDown size={16} />
+                  </a>
+                  <a
+                    href={whatsappLink(
+                      `Hola, quisiera información sobre el curso "${curso.nombre}".`
+                    )}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex w-full items-center justify-center gap-2 px-5 py-3 rounded-xl border-2 border-emerald-500/50 text-emerald-400 text-sm font-bold hover:bg-emerald-500/10 transition-colors"
+                  >
+                    <MessageCircle size={16} />
+                    Consultar por WhatsApp
+                  </a>
                 </div>
               </CardBody>
             </Card>

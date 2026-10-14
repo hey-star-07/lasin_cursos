@@ -22,6 +22,7 @@ import { CursoGrid } from '@/components/cursos/CursoGrid';
 import { cursosApi } from '@/lib/api/cursos.api';
 import { Reveal } from '@/components/home/Reveal';
 import { CursosCarousel } from '@/components/home/CursosCarousel';
+import { whatsappLink } from '@/lib/utils/constants';
 import './home.css';
 
 // Tipografía de títulos (solo visual)
@@ -32,9 +33,6 @@ const display = Sora({
 });
 
 export const revalidate = 60; // ISR cada 60 segundos
-
-const URL_CONTACTO = 'https://lasin.fcpn.edu.bo/contact/';
-const URL_WHATSAPP = 'https://wa.me/59177862862';
 
 const ventajas = [
   {
@@ -433,11 +431,18 @@ export default async function HomePage() {
             ))}
           </div>
 
-          <Reveal className="text-center mt-12">
+          <Reveal className="text-center mt-12 flex flex-wrap items-center justify-center gap-4">
             <span className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-amber-500/15 text-amber-500 font-bold uppercase tracking-wider text-sm lasin-pulse-ring">
               <Clock size={16} />
               Cupos Limitados
             </span>
+            <Link
+              href="/proceso"
+              className="inline-flex items-center gap-2 text-sm font-bold text-brand-primary hover:gap-3 transition-all"
+            >
+              Ver el proceso completo
+              <ArrowRight size={16} />
+            </Link>
           </Reveal>
         </div>
       </section>
@@ -475,17 +480,15 @@ export default async function HomePage() {
                 </p>
 
                 <div className="flex flex-wrap gap-4 justify-center mb-12">
-                  <a
-                    href={URL_CONTACTO}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                  <Link
+                    href="/cursos"
                     className="inline-flex items-center gap-2 px-8 py-4 rounded-2xl bg-white text-brand-primary font-bold text-lg shadow-xl hover:scale-105 hover:shadow-2xl transition-all"
                   >
                     Preinscribirme Ahora
                     <ArrowRight size={20} />
-                  </a>
+                  </Link>
                   <a
-                    href={URL_WHATSAPP}
+                    href={whatsappLink()}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-2 px-8 py-4 rounded-2xl border-2 border-white/70 text-white font-bold text-lg hover:bg-white/15 hover:scale-105 transition-all"

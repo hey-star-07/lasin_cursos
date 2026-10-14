@@ -6,6 +6,7 @@ import Link from 'next/link';
 import {
   ArrowLeft,
   BookOpen,
+  CalendarCheck,
   CalendarDays,
   CheckCircle2,
   ClipboardList,
@@ -23,7 +24,10 @@ import type { LucideIcon } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { EmptyState } from '@/components/shared/EmptyState';
-import { PreinscripcionTable } from '@/components/preinscripciones/PreinscripcionTable';
+import {
+  PreinscripcionTable,
+  type PreinscripcionStats,
+} from '@/components/preinscripciones/PreinscripcionTable';
 import { display } from '@/components/admin/fonts';
 import { useCurso } from '@/hooks/useCursos';
 import { formatearMonto, formatearFecha } from '@/lib/utils/format';
@@ -35,7 +39,8 @@ type CursoExtra = {
   nivel?: string | null;
   instructor?: string | null;
   fechaFin?: string | null;
-  _count?: { preinscripciones?: number; inscripciones?: number };
+  // preinscripciones = todos los formularios, aceptadas = solo aceptados
+  _count?: { preinscripciones?: number; aceptadas?: number };
 };
 
 type Estado = 'proceso' | 'finalizado' | 'proximo';
@@ -86,6 +91,9 @@ export default function PreinscripcionesCursoPage({
   const { cursoId } = use(params);
   const { curso, loading } = useCurso(Number(cursoId));
 
+  // Contadores en vivo: la tabla avisa cuando se acepta/rechaza a alguien
+  const [stats, setStats] = useState<PreinscripcionStats | null>(null);
+
   /* ---------- Cargando: skeletons ---------- */
   if (loading) {
     return (
@@ -125,8 +133,9 @@ export default function PreinscripcionesCursoPage({
   const extra = curso as typeof curso & CursoExtra;
   const afiche = extra.aficheUrl ?? null;
 
-  const pre = extra._count?.preinscripciones ?? 0;
-  const ins = extra._count?.inscripciones ?? 0;
+  // Preinscritos = TODOS los formularios · Inscritos = solo los aceptados
+  const pre = stats?.total ?? extra._count?.preinscripciones ?? 0;
+  const ins = stats?.aceptados ?? extra._count?.aceptadas ?? 0;
   const conv = pre === 0 ? 0 : Math.min(100, Math.round((ins / pre) * 100));
 
   /* Estado y avance del curso según fechas */
@@ -141,10 +150,17 @@ export default function PreinscripcionesCursoPage({
       ? Math.min(100, Math.max(0, Math.round(((hoy - inicio) / (fin - inicio)) * 100)))
       : null;
 
-  const stats: { label: string; valor: number; sufijo?: string; Icon: LucideIcon; color: string }[] = [
-    { label: 'Preinscritos', valor: pre, Icon: Users, color: 'from-amber-500 to-orange-500' },
-    { label: 'Inscritos', valor: ins, Icon: UserCheck, color: 'from-cyan-500 to-indigo-500' },
-    { label: 'Conversión', valor: conv, sufijo: '%', Icon: TrendingUp, color: 'from-emerald-500 to-teal-500' },
+  const tarjetas: {
+    label: string;
+    nota: string;
+    valor: number;
+    sufijo?: string;
+    Icon: LucideIcon;
+    color: string;
+  }[] = [
+    { label: 'Preinscritos', nota: 'Total de formularios', valor: pre, Icon: Users, color: 'from-amber-500 to-orange-500' },
+    { label: 'Inscritos', nota: 'Aceptados', valor: ins, Icon: UserCheck, color: 'from-cyan-500 to-indigo-500' },
+    { label: 'Conversión', nota: 'Aceptados ÷ preinscritos', valor: conv, sufijo: '%', Icon: TrendingUp, color: 'from-emerald-500 to-teal-500' },
   ];
 
   return (
@@ -228,9 +244,15 @@ export default function PreinscripcionesCursoPage({
                 </span>
               )}
               {curso.fechaInicio && (
-                <span className={chip}>
+                <span className={chip} title="Inicio de clases">
                   <CalendarDays size={17} />
-                  {formatearFecha(curso.fechaInicio)}
+                  Inicio: {formatearFecha(curso.fechaInicio)}
+                </span>
+              )}
+              {extra.fechaFin && (
+                <span className={chip} title="Fin de clases">
+                  <CalendarCheck size={17} />
+                  Fin: {formatearFecha(extra.fechaFin)}
                 </span>
               )}
               <span className={chip}>
@@ -272,7 +294,7 @@ export default function PreinscripcionesCursoPage({
 
       {/* ---------------- Estadísticas ---------------- */}
       <section className="grid gap-5 sm:grid-cols-3">
-        {stats.map((s, i) => (
+        {tarjetas.map((s, i) => (
           <div
             key={s.label}
             className="pre-enter pre-stat glass relative overflow-hidden rounded-3xl p-5"
@@ -287,6 +309,7 @@ export default function PreinscripcionesCursoPage({
               <Contador valor={s.valor} sufijo={s.sufijo} />
             </div>
             <div className="mt-2 text-sm font-bold uppercase tracking-wide text-text-secondary">{s.label}</div>
+            <div className="text-xs font-medium text-text-secondary/80">{s.nota}</div>
           </div>
         ))}
       </section>
@@ -310,7 +333,11 @@ export default function PreinscripcionesCursoPage({
 
         {/* .pre-table-xl agranda la letra y anima las filas de la tabla */}
         <div className="pre-table-xl">
-          <PreinscripcionTable cursoId={curso.id} cursoNombre={curso.nombre} />
+          <PreinscripcionTable
+            cursoId={curso.id}
+            cursoNombre={curso.nombre}
+            onStatsChange={setStats}
+          />
         </div>
       </section>
     </div>

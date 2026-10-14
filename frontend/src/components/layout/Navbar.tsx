@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { useState } from 'react';
 import { Menu, X, BookOpen, LogIn, LayoutDashboard } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
@@ -10,13 +11,23 @@ import { useAuth } from '@/hooks/useAuth';
 const navLinks = [
   { href: '/', label: 'Inicio' },
   { href: '/cursos', label: 'Cursos' },
-  { href: '/#proceso', label: 'Proceso' },
-  { href: '/#contacto', label: 'Contacto' },
+  { href: '/proceso', label: 'Proceso' },
 ];
+
+/** Indica si el enlace corresponde a la página donde está el usuario. */
+function esActivo(pathname: string, href: string) {
+  if (href === '/') return pathname === '/';
+  // El detalle de un curso y el formulario de preinscripción cuentan como "Cursos"
+  if (href === '/cursos') {
+    return pathname.startsWith('/cursos') || pathname.startsWith('/preinscripcion');
+  }
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
 
 export function Navbar() {
   const [open, setOpen] = useState(false);
-  const { isAuthenticated, usuario } = useAuth();
+  const pathname = usePathname();
+  const { isAuthenticated } = useAuth();
 
   return (
     <header className="sticky top-0 z-40 w-full backdrop-blur-lg bg-bg-primary/80 border-b border-border">
@@ -31,17 +42,31 @@ export function Navbar() {
         </Link>
 
         {/* Desktop Nav */}
-        <nav className="hidden md:flex items-center gap-8">
-          {navLinks.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              className="text-sm font-semibold text-text-secondary hover:text-text-primary transition-colors relative group"
-            >
-              {link.label}
-              <span className="absolute -bottom-1 left-0 w-0 h-0.5 gradient-brand transition-all duration-300 group-hover:w-full" />
-            </Link>
-          ))}
+        <nav className="hidden md:flex items-center gap-2">
+          {navLinks.map((link) => {
+            const activo = esActivo(pathname, link.href);
+            return (
+              <Link
+                key={link.href}
+                href={link.href}
+                aria-current={activo ? 'page' : undefined}
+                className={cn(
+                  'relative px-4 py-2 rounded-xl text-sm font-bold transition-all duration-300 group',
+                  activo
+                    ? 'text-white bg-brand-primary/20 border border-brand-primary/50 shadow-lg shadow-brand-primary/20'
+                    : 'text-text-secondary border border-transparent hover:text-text-primary hover:bg-bg-secondary'
+                )}
+              >
+                {link.label}
+                <span
+                  className={cn(
+                    'absolute -bottom-0.5 left-3 right-3 h-0.5 rounded-full gradient-brand transition-all duration-300',
+                    activo ? 'opacity-100' : 'opacity-0 scale-x-0 group-hover:opacity-100 group-hover:scale-x-100'
+                  )}
+                />
+              </Link>
+            );
+          })}
         </nav>
 
         <div className="hidden md:flex items-center gap-3">
@@ -82,16 +107,25 @@ export function Navbar() {
         )}
       >
         <nav className="container-custom py-4 flex flex-col gap-1">
-          {navLinks.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              onClick={() => setOpen(false)}
-              className="py-2.5 px-4 rounded-lg text-sm font-semibold text-text-secondary hover:bg-bg-secondary hover:text-text-primary transition-colors"
-            >
-              {link.label}
-            </Link>
-          ))}
+          {navLinks.map((link) => {
+            const activo = esActivo(pathname, link.href);
+            return (
+              <Link
+                key={link.href}
+                href={link.href}
+                onClick={() => setOpen(false)}
+                aria-current={activo ? 'page' : undefined}
+                className={cn(
+                  'py-2.5 px-4 rounded-lg text-sm font-bold transition-colors border-l-4',
+                  activo
+                    ? 'bg-brand-primary/20 text-white border-brand-primary'
+                    : 'border-transparent text-text-secondary hover:bg-bg-secondary hover:text-text-primary'
+                )}
+              >
+                {link.label}
+              </Link>
+            );
+          })}
           <Link
             href={isAuthenticated ? '/admin/dashboard' : '/login'}
             onClick={() => setOpen(false)}

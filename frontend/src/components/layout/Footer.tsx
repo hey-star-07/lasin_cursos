@@ -1,12 +1,10 @@
 import Link from 'next/link';
-import { BookOpen, Mail, Phone, MapPin } from 'lucide-react';
+import { BookOpen, MessageCircle, Phone, MapPin } from 'lucide-react';
+import { CONTACTO, whatsappLink } from '@/lib/utils/constants';
 
 export function Footer() {
   return (
-    <footer
-      id="contacto"
-      className="bg-bg-primary border-t border-border mt-auto"
-    >
+    <footer className="bg-bg-primary border-t border-border mt-auto">
       <div className="container-custom py-16">
         <div className="grid gap-12 md:grid-cols-4">
           {/* Marca */}
@@ -35,6 +33,8 @@ export function Footer() {
               {[
                 { href: '/', label: 'Inicio' },
                 { href: '/cursos', label: 'Cursos' },
+                { href: '/proceso', label: 'Proceso de inscripción' },
+                { href: '/contacto', label: 'Contacto' },
                 { href: '/login', label: 'Iniciar Sesión' },
               ].map((link) => (
                 <li key={link.href}>
@@ -57,14 +57,28 @@ export function Footer() {
             <ul className="space-y-3">
               <li className="flex items-center gap-2 text-sm text-text-secondary">
                 <Phone size={16} className="text-brand-primary flex-shrink-0" />
-                +591 77862862
+                {CONTACTO.telefono}
+              </li>
+              <li>
+                <a
+                  href={whatsappLink()}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 text-sm text-text-secondary hover:text-emerald-400 transition-colors"
+                >
+                  <MessageCircle
+                    size={16}
+                    className="text-emerald-400 flex-shrink-0"
+                  />
+                  Escríbenos por WhatsApp
+                </a>
               </li>
               <li className="flex items-start gap-2 text-sm text-text-secondary">
                 <MapPin
                   size={16}
                   className="text-brand-primary flex-shrink-0 mt-0.5"
                 />
-                UMSA, Campus Universitario, La Paz
+                {CONTACTO.direccion}
               </li>
             </ul>
           </div>

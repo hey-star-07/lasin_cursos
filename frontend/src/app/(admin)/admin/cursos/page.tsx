@@ -9,8 +9,12 @@ import {
   Trash2,
   BookOpen,
   Users,
+  UserCheck,
   Monitor,
   CalendarDays,
+  CalendarCheck,
+  Clock,
+  Hourglass,
   FileEdit,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
@@ -22,7 +26,12 @@ import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import { AdminPageHeader } from '@/components/admin/AdminPageHeader';
 import { display } from '@/components/admin/fonts';
 import { useCursos } from '@/hooks/useCursos';
-import { formatearMonto, formatearFecha } from '@/lib/utils/format';
+import { Dato } from '@/components/cursos/Dato';
+import {
+  formatearMonto,
+  formatearFecha,
+  formatearHorario,
+} from '@/lib/utils/format';
 import './cursos-admin.css';
 
 // Colores de respaldo de cada tarjeta (solo visual)
@@ -57,17 +66,27 @@ function CursoImagen({
 
   return (
     <div
-      className={`relative w-full h-44 overflow-hidden bg-gradient-to-br ${gradiente}`}
+      className={`relative w-full h-48 overflow-hidden bg-gradient-to-br ${gradiente}`}
     >
       {mostrarImagen ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={src!}
-          alt={alt}
-          loading="lazy"
-          onError={() => setError(true)}
-          className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-        />
+        <>
+          {/* Fondo difuminado + afiche completo (no se recorta el texto del afiche) */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={src!}
+            alt=""
+            aria-hidden
+            className="absolute inset-0 w-full h-full object-cover scale-125 blur-2xl opacity-40"
+          />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={src!}
+            alt={alt}
+            loading="lazy"
+            onError={() => setError(true)}
+            className="absolute inset-0 w-full h-full object-contain transition-transform duration-500 group-hover:scale-105"
+          />
+        </>
       ) : (
         <div className="absolute inset-0 grid place-items-center">
           <BookOpen
@@ -77,7 +96,6 @@ function CursoImagen({
           />
         </div>
       )}
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/30 to-transparent" />
     </div>
   );
 }
@@ -169,7 +187,7 @@ export default function AdminCursosPage() {
                 style={{ animationDelay: `${Math.min(i, 8) * 90 + 150}ms` }}
                 onClick={() => router.push(`/admin/cursos/${curso.id}`)}
               >
-                <Card hover className="curso-card group h-full overflow-hidden">
+                <Card hover className="curso-card group flex h-full flex-col overflow-hidden">
                   {/* Afiche del curso (con respaldo de degradado + ícono) */}
                   <CursoImagen
                     src={imagenSrc}
@@ -178,59 +196,115 @@ export default function AdminCursosPage() {
                     index={i}
                   />
 
-                  <CardBody className="space-y-5">
-                    <div className="min-w-0">
+                  <CardBody className="flex flex-1 flex-col gap-5">
+                    {/* Título + estado + etiquetas */}
+                    <div className="min-w-0 space-y-3">
                       <h3
-                        className={`${display.className} text-xl font-bold text-text-primary line-clamp-2 leading-snug mb-2`}
+                        className={`${display.className} text-xl font-bold text-text-primary line-clamp-2 leading-snug`}
                       >
                         {curso.nombre}
                       </h3>
-                      {curso.publicado ? (
-                        <Badge variant="aceptado" size="sm">
-                          Publicado
-                        </Badge>
-                      ) : (
-                        <Badge size="sm">Borrador</Badge>
-                      )}
+                      <div className="flex flex-wrap items-center gap-2">
+                        {curso.publicado ? (
+                          <Badge variant="aceptado" size="sm">
+                            Publicado
+                          </Badge>
+                        ) : (
+                          <Badge size="sm">Borrador</Badge>
+                        )}
+                        {curso.modalidad && (
+                          <Badge variant="primary" size="sm">
+                            <Monitor size={11} />
+                            {curso.modalidad}
+                          </Badge>
+                        )}
+                        {curso.nivel && (
+                          <Badge variant="info" size="sm">
+                            {curso.nivel}
+                          </Badge>
+                        )}
+                      </div>
                     </div>
 
-                    <div className="flex flex-wrap gap-2 text-sm text-text-secondary">
-                      {curso.modalidad && (
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-brand-primary/10">
-                          <Monitor size={14} className="text-brand-primary" />
-                          {curso.modalidad}
-                        </span>
-                      )}
-                      {curso.fechaInicio && (
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-brand-primary/10">
-                          <CalendarDays
-                            size={14}
-                            className="text-brand-primary"
-                          />
-                          {formatearFecha(curso.fechaInicio)}
-                        </span>
-                      )}
-                      {curso._count && (
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-brand-primary/10">
-                          <Users size={14} className="text-brand-primary" />
-                          {curso._count.preinscripciones} preinscritos
-                        </span>
-                      )}
+                    {/* Datos del curso */}
+                    <div className="grid grid-cols-2 gap-2.5">
+                      <Dato
+                        icon={CalendarDays}
+                        label="Inicio"
+                        value={formatearFecha(curso.fechaInicio)}
+                      />
+                      <Dato
+                        icon={CalendarCheck}
+                        label="Finalización"
+                        value={formatearFecha(curso.fechaFin)}
+                        acento="text-emerald-400"
+                      />
+                      <Dato
+                        icon={Clock}
+                        label="Horario"
+                        value={formatearHorario(curso.horaInicio, curso.horaFin)}
+                      />
+                      <Dato
+                        icon={Hourglass}
+                        label="Duración"
+                        value={
+                          curso.totalHoras
+                            ? `${curso.totalHoras} hrs`
+                            : curso.duracion || 'Por definir'
+                        }
+                        acento="text-amber-400"
+                      />
                     </div>
 
-                    <div className="flex items-center justify-between pt-4 border-t border-border">
-                      <span
-                        className={`${display.className} text-2xl font-extrabold text-brand-primary`}
-                      >
-                        {formatearMonto(curso.costo)}
-                      </span>
-                      <div className="flex flex-wrap gap-2">
+                    {/* Preinscritos (todos) e inscritos (aceptados) */}
+                    <div className="grid grid-cols-2 gap-2.5">
+                      <div className="flex items-center gap-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 px-3 py-2.5">
+                        <Users size={18} className="text-amber-400 shrink-0" />
+                        <div>
+                          <p
+                            className={`${display.className} text-xl font-extrabold leading-none text-text-primary`}
+                          >
+                            {curso._count?.preinscripciones ?? 0}
+                          </p>
+                          <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted mt-1">
+                            Preinscritos
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2.5 rounded-xl bg-cyan-500/10 border border-cyan-500/30 px-3 py-2.5">
+                        <UserCheck size={18} className="text-cyan-400 shrink-0" />
+                        <div>
+                          <p
+                            className={`${display.className} text-xl font-extrabold leading-none text-text-primary`}
+                          >
+                            {curso._count?.aceptadas ?? 0}
+                          </p>
+                          <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted mt-1">
+                            Inscritos
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Precio y acciones */}
+                    <div className="mt-auto space-y-4 pt-4 border-t border-border">
+                      <div className="flex items-baseline justify-between">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-text-muted">
+                          Costo
+                        </span>
+                        <span
+                          className={`${display.className} text-2xl font-extrabold text-brand-primary`}
+                        >
+                          {formatearMonto(curso.costo)}
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2.5">
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
                             router.push(`/admin/cursos/${curso.id}`);
                           }}
-                          className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-bold text-white bg-brand-primary hover:bg-brand-secondary shadow-lg transition-all duration-200 hover:-translate-y-0.5 cursor-pointer"
+                          className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-bold text-white bg-brand-primary hover:bg-brand-secondary shadow-lg transition-all duration-200 hover:-translate-y-0.5 cursor-pointer"
                         >
                           <Edit size={16} />
                           Editar
@@ -240,7 +314,7 @@ export default function AdminCursosPage() {
                             e.stopPropagation();
                             setDeleteId(curso.id);
                           }}
-                          className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-bold text-red-400 bg-red-500/10 border-2 border-red-500/40 hover:bg-red-500 hover:text-white hover:border-red-500 transition-all duration-200 hover:-translate-y-0.5 cursor-pointer"
+                          className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-bold text-red-400 bg-red-500/10 border-2 border-red-500/40 hover:bg-red-500 hover:text-white hover:border-red-500 transition-all duration-200 hover:-translate-y-0.5 cursor-pointer"
                         >
                           <Trash2 size={16} />
                           Eliminar
